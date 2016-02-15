@@ -35,7 +35,7 @@ bool interaction_sort(interaction ia, interaction ib)
 }
 void show_shocks(vector<shock> s);
 void show_interactions(vector<interaction> ia);
-void write_interactions(char fname[], vector<interaction>  ia);
+void write_interactions(char fname[], vector<interaction>  ia, float *times);
 void read_interactions( char fname[], vector<interaction> *ia);
 void keep_duplicates(vector<long> iunion, vector<long> *ioverlap);
 void write_interaction_counts(int iA, int iB, long n_total, vector<long> n_ints, vector<long> o_ints);
@@ -116,21 +116,79 @@ int main(int argc, char **argv)
   double time_B;
 
   vector<long> islist;
+  vector<long>::iterator il;
+
+  int *snap_list; //list of snapshots to use in tracking
+  int n_snaps;    //total number of snapshots to use
+
+  FILE *fp_times;
+  char fname_times[200];
+  int n_times;
+  float *times;
 
   time_A = timer();
 
   //if we've supplied a range of snapshots
   //to search, use that
-  if(argc==4)
+  if(argc>=4)
   {
   	imin   = atoi(argv[1]);
     imax   = atoi(argv[2]);
   	ishock = atoi(argv[3]);
   }
 
+  if(argc==5)
+  {
+  	char fname_snap_list[200];
+
+
+
+  	sprintf(fname_snap_list,"%s",argv[4]);
+
+   	FILE *fp_snap_list;
+
+   	if(!(fp_snap_list = fopen(fname_snap_list,"r")))
+   	{
+   		printf("Error opening %s\n",fname_snap_list);
+   		exit(-1);
+   	}
+
+   	fscanf(fp_snap_list,"%d\n",&n_snaps);
+
+    snap_list = (int *)malloc(n_snaps*sizeof(int));
+
+   	for(int i=0;i<n_snaps;i++)
+   	{
+   		fscanf(fp_snap_list,"%d\n",&snap_list[i]);
+   		//printf("snap_list[%d] = %d\n",i,snap_list[i]);
+   	}
+    fclose(fp_snap_list);
+
+    imin = snap_list[n_snaps-1];
+    imax = snap_list[0];
+  }else{
+
+    n_snaps = imax-imin+1;
+    snap_list = (int *)malloc(n_snaps*sizeof(int));
+
+    for(int i=0;i<n_snaps;i++)
+      snap_list[i] = imax - i;
+  }
+
+  //load snapshot times
+  sprintf(fname_times,"times.txt");
+  fp_times = fopen(fname_times,"r");
+  fscanf(fp_times,"%d\n",&n_times);
+  times = (float *) malloc(n_times*sizeof(float));
+  for(int i=0;i<n_times;i++)
+  	fscanf(fp_times,"%f\n",&times[i]);
+  fclose(fp_times);
+
+
+
   printf("ishock  = %d\n",ishock);
-  printf("imin    = %d\n",imin);
-  printf("imax    = %d\n",imax);
+  printf("imin    = %d %d\n",imin,snap_list[n_snaps-1]);
+  printf("imax    = %d %d\n",imax,snap_list[0]);
 
   sprintf(fdir,"data/");
   sprintf(fdint,"interactions/");
@@ -152,9 +210,10 @@ int main(int argc, char **argv)
   //ishock of interest
   islist.push_back(ishock);
 
-  for(iA = imax; iA>imin; iA--)
+  for(int i_snap = 0;i_snap<n_snaps-1; i_snap++)
   {
-  	iB = iA - 1;
+  	iA = snap_list[i_snap];
+  	iB = snap_list[i_snap+1];
 
   	printf("iA %d iB %d\n",iA,iB);
 
@@ -188,6 +247,13 @@ int main(int argc, char **argv)
       islist.push_back(ia_tmp[i].idx_B);
     }
 
+    //keep unique
+  	std::sort(islist.begin(), islist.end());
+  	il = std::unique(islist.begin(), islist.end());
+  	islist.resize( std::distance(islist.begin(), il) );
+
+    for(int i=0;i<islist.size();i++)
+    	printf("i %d islist[%d] %ld\n",i,i,islist[i]);
 
 
 
@@ -199,7 +265,8 @@ int main(int argc, char **argv)
   	printf("HERE\n");
 
     //remember the current number of branches
-    nbranches.push_back(ia_tmp.size());
+    //nbranches.push_back(ia_tmp.size());
+    nbranches.push_back(islist.size());
 
     //reset temporary interaction list
     vector<interaction>().swap(ia_tmp);
@@ -217,7 +284,7 @@ int main(int argc, char **argv)
 	//printf("snap_A %04d\tia %10ld\tib %10ld\tn %10ld\tfrac A %5.4e\tfrac B %5.4e\txA %e %e %e\txB %e %e %e\n",ia[i].snap_A,ia[i].id_A,ia[i].id_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
 
   //save the interactions to a file
-  write_interactions(foutput,ia_shock);
+  write_interactions(foutput,ia_shock,times);
 
   write_branches(fbranch,nbranches);
 
@@ -278,7 +345,7 @@ void write_branches(char fname[], vector<long> ia)
   }
   fclose(fp);
 }
-void write_interactions(char fname[], vector<interaction> ia)
+void write_interactions(char fname[], vector<interaction> ia, float *times)
 {
   FILE *fp;
   if(!(fp=fopen(fname,"w")))
@@ -289,7 +356,7 @@ void write_interactions(char fname[], vector<interaction> ia)
   fprintf(fp,"%ld\n",ia.size());
   for(size_t i=0;i<ia.size();i++)
   {
-  	fprintf(fp,"%04d %04d %8ld %8ld %8ld %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e\n",ia[i].snap_A,ia[i].snap_B,ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
+  	fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
   }
   fclose(fp);
 }
