@@ -24,6 +24,8 @@ struct interaction
   float d_B;
   float frac_A;
   float frac_B;
+  float frac_A_dense;
+  float frac_B_dense;
   float x_A[3];
   float x_B[3];
   long n;
@@ -33,6 +35,11 @@ bool interaction_sort(interaction ia, interaction ib)
   //sort by decreasing frac_A
   return ia.frac_A>ib.frac_A;
 }
+bool interaction_sort_dense(interaction ia, interaction ib)
+{
+  //sort by decreasing frac_A
+  return ia.frac_A_dense>ib.frac_A_dense;
+}
 void show_shocks(vector<shock> s);
 void show_interactions(vector<interaction> ia);
 void write_interactions(char fname[], vector<interaction>  ia, float *times);
@@ -40,7 +47,7 @@ void read_interactions( char fname[], vector<interaction> *ia);
 void keep_duplicates(vector<long> iunion, vector<long> *ioverlap);
 void write_interaction_counts(int iA, int iB, long n_total, vector<long> n_ints, vector<long> o_ints);
 void read_interaction_counts(char fname[], vector<long> *n_ints, vector<long> *o_ints);
-void write_branches(char fname[], vector<long> ia);
+void write_branches(char fname[], vector<long> ia, vector<long> ib);
 int main(int argc, char **argv)
 {
   char fdir[200];
@@ -60,8 +67,8 @@ int main(int argc, char **argv)
 
 
   int  ishock = 0;
-  int imin = 795;
-  int imax = 801;
+  int imin = 700;
+  int imax = 901;
 
   int  iA;
   int  iB;
@@ -102,6 +109,8 @@ int main(int argc, char **argv)
   interaction ia_new;
 
   vector<long> nbranches;
+  vector<long> nbinteractions;
+
 
   kdtree2 *bp_tree;
   kdtree2_result_vector res;
@@ -221,18 +230,24 @@ int main(int argc, char **argv)
 
     read_interaction_counts(fcount,&n_ints,&o_ints);
 
-    //printf("******\n");
+    printf("******\n");
     for(int ss=0;ss<islist.size();ss++)
     {
       ishock = islist[ss];
+
+      if(ishock>=n_ints.size())
+      {
+	printf("ERROR iA %04d iB %04d ishock %d n_ints.size() %ld\n",iA,iB,ishock,n_ints.size());
+	exit(-1);
+      }
 
       printf("iA %04d iB %04d ishock %d n_ins %ld o_ints %ld\n",iA,iB,ishock,n_ints[ishock],o_ints[ishock]);
 
       for(int i=0;i<n_ints[ishock];i++)
       {
         ia_tmp.push_back(ia[ioff + o_ints[ishock] + i]);
-        //m = ia_tmp.size()-1;
-        //printf("iA %04d i %10d nints %4ld idA %10ld idB %10ld nex %8ld frac_A %5.4e\n",ia_tmp[m].snap_A,i,n_ints[ishock],ia_tmp[m].id_A,ia_tmp[m].id_B,ia_tmp[m].n,ia_tmp[m].frac_A);
+        m = ia_tmp.size()-1;
+        printf("iA %04d i %10d nints %4ld idA %10ld idB %10ld nex %8ld frac_A %5.4e\n",ia_tmp[m].snap_A,i,n_ints[ishock],ia_tmp[m].id_A,ia_tmp[m].id_B,ia_tmp[m].n,ia_tmp[m].frac_A);
       }
     }
 
@@ -246,6 +261,9 @@ int main(int argc, char **argv)
       ia_shock.push_back(ia_tmp[i]);
       islist.push_back(ia_tmp[i].idx_B);
     }
+
+    //remember the number of interactions
+    nbinteractions.push_back(ia_tmp.size());
 
     //keep unique
   	std::sort(islist.begin(), islist.end());
@@ -267,15 +285,20 @@ int main(int argc, char **argv)
     //remember the current number of branches
     //nbranches.push_back(ia_tmp.size());
     nbranches.push_back(islist.size());
+    printf("nbranches %ld\n",nbranches[nbranches.size()-1]);
 
     //reset temporary interaction list
     vector<interaction>().swap(ia_tmp);
 
     //advance ioff
-    ioff += n_ints.size();
+    long n_int_sum = 0;
+    for(int i=0;i<n_ints.size();i++)
+      n_int_sum += n_ints[i];
+    //ioff += n_ints.size();
+    ioff += n_int_sum;
 
    	vector<long>().swap(n_ints);
-	  vector<long>().swap(o_ints);  
+	vector<long>().swap(o_ints);  
   }//end loop over snapshots
 
 
@@ -286,7 +309,7 @@ int main(int argc, char **argv)
   //save the interactions to a file
   write_interactions(foutput,ia_shock,times);
 
-  write_branches(fbranch,nbranches);
+  write_branches(fbranch,nbranches,nbinteractions);
 
   time_B = timer();
 
@@ -330,7 +353,7 @@ void keep_duplicates(vector<long> iunion, vector<long> *ioverlap)
     }
   }
 }
-void write_branches(char fname[], vector<long> ia)
+void write_branches(char fname[], vector<long> ia, vector<long> ib)
 {
   FILE *fp;
   if(!(fp=fopen(fname,"w")))
@@ -341,7 +364,7 @@ void write_branches(char fname[], vector<long> ia)
   fprintf(fp,"%ld\n",ia.size());
   for(size_t i=0;i<ia.size();i++)
   {
-    fprintf(fp,"%ld\n",ia[i]);
+    fprintf(fp,"%ld\t%ld\n",ia[i],ib[i]);
   }
   fclose(fp);
 }
@@ -356,7 +379,9 @@ void write_interactions(char fname[], vector<interaction> ia, float *times)
   fprintf(fp,"%ld\n",ia.size());
   for(size_t i=0;i<ia.size();i++)
   {
-  	fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
+  	//fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
+    fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].frac_A_dense,ia[i].frac_B_dense,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
+
   }
   fclose(fp);
 }
@@ -382,6 +407,8 @@ void read_interactions(char fname[], vector<interaction> *ia)
   float d_B;
   float frac_A;
   float frac_B;
+  float frac_A_dense;
+  float frac_B_dense;
   float x_A[3];
   float x_B[3];
   long n;
@@ -389,10 +416,12 @@ void read_interactions(char fname[], vector<interaction> *ia)
   ia->resize(n);
   for(size_t i=0;i<ia->size();i++)
   {
-  	fscanf(fp,"%04d %04d %8ld %8ld %8ld %f %f %10ld %8ld %8ld %f %f %f %f %10ld %8ld %8ld %f %f %f %f\n",&snap_A,&snap_B,&idx_A,&idx_B,&n,&frac_A,&frac_B,&id_A,&l_A,&o_A,&d_A,&x_A[0],&x_A[1],&x_A[2],&id_B,&l_B,&o_B,&d_B,&x_B[0],&x_B[1],&x_B[2]);
+  	fscanf(fp,"%04d %04d %8ld %8ld %8ld %f %f %f %f %10ld %8ld %8ld %f %f %f %f %10ld %8ld %8ld %f %f %f %f\n",&snap_A,&snap_B,&idx_A,&idx_B,&n,&frac_A,&frac_B,&frac_A_dense,&frac_B_dense,&id_A,&l_A,&o_A,&d_A,&x_A[0],&x_A[1],&x_A[2],&id_B,&l_B,&o_B,&d_B,&x_B[0],&x_B[1],&x_B[2]);
   	(*ia)[i].n = n;
   	(*ia)[i].frac_A = frac_A;
   	(*ia)[i].frac_B = frac_B;
+    (*ia)[i].frac_A = frac_A_dense;
+    (*ia)[i].frac_B = frac_B_dense;
   	(*ia)[i].snap_A = snap_A;
   	(*ia)[i].snap_B = snap_B;
   	(*ia)[i].idx_A = idx_A;
