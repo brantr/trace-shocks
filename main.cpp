@@ -153,7 +153,7 @@ int main(int argc, char **argv)
     imax   = atoi(argv[2]);
   	ishock = atoi(argv[3]);
   }
-  if(argc==6)
+  if(argc>=6)
     n_redundancy = atoi(argv[5]);
 
   if(argc>=5)
@@ -250,6 +250,7 @@ int main(int argc, char **argv)
 
       printf("iA %d iB %d\n",iA,iB);
       sprintf(fcount,"%sinteraction_count.%04d.%04d.txt",fdint,iB,iA);
+      printf("reading %s\n",fcount);
       read_interaction_counts(fcount,&n_ints,&o_ints);
       printf("******\n");
       for(int ss=0;ss<islist.size();ss++)
