@@ -124,7 +124,9 @@ int main(int argc, char **argv)
   double time_A;
   double time_B;
 
-  vector<long> islist;
+  const int max_red = 5;
+
+  array<vector<long>, max_red> islist;
   vector<long>::iterator il;
 
   int *snap_list; //list of snapshots to use in tracking
@@ -154,7 +156,10 @@ int main(int argc, char **argv)
   	ishock = atoi(argv[3]);
   }
   if(argc>=6)
+  {
     n_redundancy = atoi(argv[5]);
+  }
+  printf("n_redundancy = %d\n",n_redundancy);
 
   if(argc>=5)
   {
@@ -238,7 +243,7 @@ int main(int argc, char **argv)
 
   //the first list of shocks is just the
   //ishock of interest
-  islist.push_back(ishock);
+  islist[0].push_back(ishock);
 
   for(int i_snap = 0;i_snap<n_snaps-n_redundancy; i_snap++)
   {
@@ -248,14 +253,14 @@ int main(int argc, char **argv)
     {
       iB = snap_list[i_snap+i_red];
 
-      printf("iA %d iB %d\n",iA,iB);
+      printf("i_red %d iA %d iB %d\n",i_red,iA,iB);
       sprintf(fcount,"%sinteraction_count.%04d.%04d.txt",fdint,iB,iA);
       printf("reading %s\n",fcount);
       read_interaction_counts(fcount,&n_ints,&o_ints);
       printf("******\n");
-      for(int ss=0;ss<islist.size();ss++)
+      for(int ss=0;ss<islist[0].size();ss++)
       {
-        ishock = islist[ss];
+        ishock = islist[0][ss];
 
         if(ishock>=n_ints.size())
         {
@@ -275,23 +280,23 @@ int main(int argc, char **argv)
       }// end loop over list of traced shocks
 
       //reset the shock list
-      vector<long>().swap(islist);
+      //vector<long>().swap(islist[i_red]);
       for(int i=0;i<ia_tmp.size();i++)
       {
         ia_shock.push_back(ia_tmp[i]);
-        islist.push_back(ia_tmp[i].idx_B);
+        islist[i_red].push_back(ia_tmp[i].idx_B);
       }
 
       //remember the number of interactions
       nbinteractions.push_back(ia_tmp.size());
 
       //keep unique
-      std::sort(islist.begin(), islist.end());
-      il = std::unique(islist.begin(), islist.end());
-      islist.resize( std::distance(islist.begin(), il) );
+      std::sort(islist[i_red].begin(), islist[i_red].end());
+      il = std::unique(islist[i_red].begin(), islist[i_red].end());
+      islist[i_red].resize( std::distance(islist[i_red].begin(), il) );
 
-      for(int i=0;i<islist.size();i++)
-        printf("i %d islist[%d] %ld\n",i,i,islist[i]);
+      for(int i=0;i<islist[i_red].size();i++)
+        printf("i %d islist[%d] %ld\n",i,i,islist[i_red][i]);
 
       //if there are no interactions, break the loop
       if(ia_tmp.size()==0)
@@ -301,7 +306,7 @@ int main(int argc, char **argv)
 
       //remember the current number of branches
       //nbranches.push_back(ia_tmp.size());
-      nbranches.push_back(islist.size());
+      nbranches.push_back(islist[i_red].size());
       printf("nbranches %ld\n",nbranches[nbranches.size()-1]);
 
       //reset temporary interaction list
@@ -318,6 +323,11 @@ int main(int argc, char **argv)
       vector<long>().swap(n_ints);
       vector<long>().swap(o_ints);
     }//end loop over second snapshots
+
+    for(int i=0;i<n_redundancy-1;i++)
+      islist[i].swap(islist[i+1]);
+    vector<long>().swap(islist[n_redundancy-1]);
+
   }//end loop over first snapshots
 
 
