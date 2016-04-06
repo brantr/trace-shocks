@@ -275,7 +275,7 @@ int main(int argc, char **argv)
         {
           ia_tmp.push_back(ia[ioff + o_ints[ishock] + i]);
           m = ia_tmp.size()-1;
-          printf("iA %04d i %10d nints %4ld idA %10ld idB %10ld nex %8ld frac_A %5.4e\n",ia_tmp[m].snap_A,i,n_ints[ishock],ia_tmp[m].id_A,ia_tmp[m].id_B,ia_tmp[m].n,ia_tmp[m].frac_A);
+          printf("iA %04d idxA %6ld idxB %6ld nints %4ld idA %10ld idB %10ld nex %8ld fA %5.4e fB %5.4e fdA %5.4e fdB %5.4e\n",ia_tmp[m].snap_A,ia_tmp[m].idx_A,ia_tmp[m].idx_B,n_ints[ishock],ia_tmp[m].id_A,ia_tmp[m].id_B,ia_tmp[m].n,ia_tmp[m].frac_A,ia_tmp[m].frac_B,ia_tmp[m].frac_A_dense,ia_tmp[m].frac_B_dense);
         } //end loop over interactions
       }// end loop over list of traced shocks
 
