@@ -102,6 +102,8 @@ int main(int argc, char **argv)
   long n_ints_snap;
   long n_ints_in;
 
+  int fflag = 0; //forward mode?
+
   //vector<long> l_ia;
   //vector<long> o_ia;
   vector<interaction> ia;
@@ -144,7 +146,7 @@ int main(int argc, char **argv)
 
   if(argc<4)
   {
-    printf("./trace_shocks imin imax ishock [fname] [n_redundancy]\n");
+    printf("./trace_shocks imin imax ishock [fname] [n_redundancy] [forward_flag]\n");
     exit(-1);
   }
 
@@ -190,8 +192,19 @@ int main(int argc, char **argv)
    	}
     fclose(fp_snap_list);
 
-    imin = snap_list[n_snaps-1];
-    imax = snap_list[0];
+    if(argc>=6)
+      fflag = atoi(argv[5]);
+
+    if(fflag)
+    {
+      //forward
+      imax = snap_list[n_snaps-1];
+      imin = snap_list[0];
+    }else{
+      //backward
+      imin = snap_list[n_snaps-1];
+      imax = snap_list[0];
+    }
   }else{
 
     n_snaps = imax-imin+1;
@@ -231,6 +244,8 @@ int main(int argc, char **argv)
   sprintf(foutput,"%strace.%04d.%04d.%d.%08d.txt",fdtrace,imin,imax,n_redundancy,ishock);
   sprintf(fbranch,"%sbranches.%04d.%04d.%d.%08d.txt",fdtrace,imin,imax,n_redundancy,ishock);
 
+  //Read interactions
+  printf("Reading %s\n",fint);
   read_interactions(fint,&ia);
 
   printf("ia.size() %ld\n",ia.size());
@@ -255,7 +270,12 @@ int main(int argc, char **argv)
       iB = snap_list[i_snap+i_red];
 
       printf("i_red %d iA %d iB %d\n",i_red,iA,iB);
-      sprintf(fcount,"%sinteraction_count.%04d.%04d.txt",fdint,iB,iA);
+      if(fflag)
+      {
+        sprintf(fcount,"%sinteraction_count.%04d.%04d.txt",fdint,iA,iB);
+      }else{
+        sprintf(fcount,"%sinteraction_count.%04d.%04d.txt",fdint,iB,iA);
+      }
       printf("reading %s\n",fcount);
       read_interaction_counts(fcount,&n_ints,&o_ints);
       printf("******\n");
@@ -297,7 +317,7 @@ int main(int argc, char **argv)
       islist[i_red].resize( std::distance(islist[i_red].begin(), il) );
 
       for(int i=0;i<islist[i_red].size();i++)
-        printf("i %d islist[%d] %ld\n",i,i,islist[i_red][i]);
+        printf("i_red %d i %d islist[%d] %ld\n",i_red,i,i,islist[i_red][i]);
 
       //if there are no interactions, break the loop
       if(ia_tmp.size()==0)
@@ -320,6 +340,7 @@ int main(int argc, char **argv)
 
       //ioff += n_ints.size();
       ioff += n_int_sum;
+      printf("ioff = %ld n_int_sum %ld n_ints.size() %ld\n",ioff,n_int_sum,n_ints.size());
 
       vector<long>().swap(n_ints);
       vector<long>().swap(o_ints);
