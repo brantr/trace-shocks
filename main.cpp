@@ -30,6 +30,8 @@ struct interaction
   float x_A[3];
   float x_B[3];
   float x_C[3];
+  float x_D[3];
+
   long n;
 };
 bool interaction_sort(interaction ia, interaction ib)
@@ -432,7 +434,7 @@ void write_interactions(char fname[], vector<interaction> ia, float *times)
   for(size_t i=0;i<ia.size();i++)
   {
   	//fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2]);
-    fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].frac_A_dense,ia[i].frac_B_dense,ia[i].frac_dense,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2],ia[i].x_C[0],ia[i].x_C[1],ia[i].x_C[2]);
+    fprintf(fp,"%04d %04d %9.8f %9.8f %8ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e %5.4e %5.4e %5.4e %10ld %8ld %8ld %5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e % 5.4e\n",ia[i].snap_A,ia[i].snap_B,times[ia[i].snap_A],times[ia[i].snap_B],ia[i].idx_A,ia[i].idx_B,ia[i].n,ia[i].frac_A,ia[i].frac_B,ia[i].frac_A_dense,ia[i].frac_B_dense,ia[i].frac_dense,ia[i].id_A,ia[i].l_A,ia[i].o_A,ia[i].d_A,ia[i].x_A[0],ia[i].x_A[1],ia[i].x_A[2],ia[i].id_B,ia[i].l_B,ia[i].o_B,ia[i].d_B,ia[i].x_B[0],ia[i].x_B[1],ia[i].x_B[2],ia[i].x_C[0],ia[i].x_C[1],ia[i].x_C[2],ia[i].x_D[0],ia[i].x_D[1],ia[i].x_D[2]);
 
   }
   fclose(fp);
@@ -466,13 +468,14 @@ void read_interactions(char fname[], vector<interaction> *ia)
   float x_A[3];
   float x_B[3];
   float x_C[3];
+  float x_D[3];
 
   long n;
   fscanf(fp,"%ld\n",&n);
   ia->resize(n);
   for(size_t i=0;i<ia->size();i++)
   {
-  	fscanf(fp,"%04d %04d %8ld %8ld %8ld %f %f %f %f %f %10ld %8ld %8ld %f %f %f %f %10ld %8ld %8ld %f %f %f %f %f %f %f\n",&snap_A,&snap_B,&idx_A,&idx_B,&n,&frac_A,&frac_B,&frac_A_dense,&frac_B_dense,&frac_dense,&id_A,&l_A,&o_A,&d_A,&x_A[0],&x_A[1],&x_A[2],&id_B,&l_B,&o_B,&d_B,&x_B[0],&x_B[1],&x_B[2],&x_C[0],&x_C[1],&x_C[2]);
+  	fscanf(fp,"%04d %04d %8ld %8ld %8ld %f %f %f %f %f %10ld %8ld %8ld %f %f %f %f %10ld %8ld %8ld %f %f %f %f %f %f %f %f %f %f\n",&snap_A,&snap_B,&idx_A,&idx_B,&n,&frac_A,&frac_B,&frac_A_dense,&frac_B_dense,&frac_dense,&id_A,&l_A,&o_A,&d_A,&x_A[0],&x_A[1],&x_A[2],&id_B,&l_B,&o_B,&d_B,&x_B[0],&x_B[1],&x_B[2],&x_C[0],&x_C[1],&x_C[2],&x_D[0],&x_D[1],&x_D[2]);
   	(*ia)[i].n = n;
   	(*ia)[i].frac_A = frac_A;
   	(*ia)[i].frac_B = frac_B;
@@ -496,7 +499,11 @@ void read_interactions(char fname[], vector<interaction> *ia)
   		(*ia)[i].x_A[k] = x_A[k];
   		(*ia)[i].x_B[k] = x_B[k];
       (*ia)[i].x_C[k] = x_C[k];
+      (*ia)[i].x_D[k] = x_D[k];
+
   	}
+    if(snap_A==753 && idx_A==0)
+      printf("iA %d iB %d idx_A %ld idx_B %ld id_A %ld id_B %ld\n",snap_A,snap_B,idx_A,idx_B,id_A,id_B);
   }
   fclose(fp);
 }
